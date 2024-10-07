@@ -36,19 +36,17 @@ b. Get a task by ID (GET /tasks/{id}): Return a specific task by its ID.
 For this project, store tasks in an in-memory slice of Task structs (no database required).
 
 ## start the server
-
 func main() {
-	router := mux.NewRouter()
+	r := mux.NewRouter()
 
-	// Route Handlers
-	router.HandleFunc("/tasks", CreateTask).Methods("POST")
-	router.HandleFunc("/tasks", GetTasks).Methods("GET")
-	router.HandleFunc("/tasks/{id}", GetTaskByID).Methods("GET")
-	router.HandleFunc("/tasks/{id}", UpdateTask).Methods("PUT")
-	router.HandleFunc("/tasks/{id}", DeleteTask).Methods("DELETE")
+	r.HandleFunc("/tasks", createTask).Methods("POST")
+	r.HandleFunc("/tasks", getTasks).Methods("GET")
+	r.HandleFunc("/tasks/{id}", getTaskByID).Methods("GET")
+	r.HandleFunc("/tasks/{id}", updateTask).Methods("PUT")
+	r.HandleFunc("/tasks/{id}", deleteTask).Methods("DELETE")
 
-	fmt.Println("Server is running on port 8089")
-	log.Fatal(http.ListenAndServe(":8089", router))
+	log.Println("Server starting on port 8080...")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
 
 ## Testing API

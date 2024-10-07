@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -18,91 +17,103 @@ type Task struct {
 	Status      string `json:"status"` // "pending" or "completed"
 }
 
-var tasks []Task  // In-memory task storage
-var idCounter = 1 // Task ID counter
+var tasks []Task // In-memory task storage
+var nextID = 1   // Task ID counter
 
 // CreateTask handles the creation of a new task
-func CreateTask(w http.ResponseWriter, r *http.Request) {
-	var newTask Task
-	json.NewDecoder(r.Body).Decode(&newTask)
-	newTask.ID = idCounter
-	idCounter++
-	newTask.Status = "pending" // Default status
-	tasks = append(tasks, newTask)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(newTask)
+func createTask(w http.ResponseWriter, r *http.Request) {
+	var task Task
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	task.ID = nextID
+	nextID++
+	task.Status = "pending"
+	tasks = append(tasks, task)
+	json.NewEncoder(w).Encode(task)
 }
 
 // GetTasks returns all the tasks
-func GetTasks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func getTasks(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tasks)
 }
 
 // GetTaskByID retrieves a task by its ID
-func GetTaskByID(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r) // Get parameters from the URL
-	id, _ := strconv.Atoi(params["id"])
+func getTaskByID(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
 
 	for _, task := range tasks {
 		if task.ID == id {
-			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(task)
 			return
 		}
 	}
-
 	http.Error(w, "Task not found", http.StatusNotFound)
 }
 
 // UpdateTask updates an existing task
-func UpdateTask(w http.ResponseWriter, r *http.Request) {
+func updateTask(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id, _ := strconv.Atoi(params["id"])
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	var updatedTask Task
+	if err := json.NewDecoder(r.Body).Decode(&updatedTask); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	for i, task := range tasks {
 		if task.ID == id {
-			var updatedTask Task
-			json.NewDecoder(r.Body).Decode(&updatedTask)
-			updatedTask.ID = task.ID
-			tasks[i] = updatedTask
-
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(updatedTask)
+			tasks[i].Title = updatedTask.Title
+			tasks[i].Description = updatedTask.Description
+			tasks[i].Status = updatedTask.Status
+			json.NewEncoder(w).Encode(tasks[i])
 			return
 		}
 	}
-
 	http.Error(w, "Task not found", http.StatusNotFound)
 }
 
 // DeleteTask removes a task by its ID
-func DeleteTask(w http.ResponseWriter, r *http.Request) {
+func deleteTask(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id, _ := strconv.Atoi(params["id"])
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
 
 	for i, task := range tasks {
 		if task.ID == id {
-			tasks = append(tasks[:i], tasks[i+1:]...) // Remove task from slice
-			w.WriteHeader(http.StatusNoContent)       // Return 204 No Content
+			tasks = append(tasks[:i], tasks[i+1:]...)
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 	}
-
 	http.Error(w, "Task not found", http.StatusNotFound)
 }
 
 func main() {
-	router := mux.NewRouter()
+	r := mux.NewRouter()
 
-	// Route Handlers
-	router.HandleFunc("/tasks", CreateTask).Methods("POST")
-	router.HandleFunc("/tasks", GetTasks).Methods("GET")
-	router.HandleFunc("/tasks/{id}", GetTaskByID).Methods("GET")
-	router.HandleFunc("/tasks/{id}", UpdateTask).Methods("PUT")
-	router.HandleFunc("/tasks/{id}", DeleteTask).Methods("DELETE")
+	// Define routes
+	r.HandleFunc("/tasks", createTask).Methods("POST")
+	r.HandleFunc("/tasks", getTasks).Methods("GET")
+	r.HandleFunc("/tasks/{id}", getTaskByID).Methods("GET")
+	r.HandleFunc("/tasks/{id}", updateTask).Methods("PUT")
+	r.HandleFunc("/tasks/{id}", deleteTask).Methods("DELETE")
 
-	fmt.Println("Server is running on port 8089")
-	log.Fatal(http.ListenAndServe(":8089", router))
+	// Start the server
+	log.Println("Server starting on port 8089...")
+	log.Fatal(http.ListenAndServe(":8089", r))
 }
