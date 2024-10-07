@@ -45,8 +45,8 @@ func main() {
 	r.HandleFunc("/tasks/{id}", updateTask).Methods("PUT")
 	r.HandleFunc("/tasks/{id}", deleteTask).Methods("DELETE")
 
-	log.Println("Server starting on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Println("Server starting on port 8089...")
+	log.Fatal(http.ListenAndServe(":8089", r))
 }
 
 ## Testing API
